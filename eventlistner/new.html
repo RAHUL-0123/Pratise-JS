@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live Type + Pronounce (JS)</title>
+  <style>
+    :root{font-family:system-ui,Segoe UI,Roboto,Arial;background:#f6f8fb;color:#0b1220}
+    body{margin:24px}
+    .card{background:white;padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(9,18,28,0.08);max-width:900px}
+    textarea{width:100%;min-height:120px;font-size:18px;padding:12px;border-radius:8px;border:1px solid #e6eef8;resize:vertical}
+    .display{margin-top:12px;padding:12px;border-radius:8px;border:1px dashed #d8e6ff;min-height:48px;background:#fbfeff}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    label{font-size:14px}
+    select,input[type=range]{padding:6px;border-radius:6px;border:1px solid #e6eef8}
+    .small{font-size:13px;color:#556}
+    .word{display:inline-block;padding:4px 8px;border-radius:6px;margin:4px;font-weight:600}
+    .spoken{background:#dff7e0}
+    .current{background:#fff4d6}
+    .muted{color:#88a}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Live typing → show words & speak pronunciation</h2>
+    <p class="small">Type in the box. When you finish a word (press space, Enter or punctuation) it will be shown below and spoken aloud using the browser's Speech Synthesis API.</p>
+
+    <textarea id="input" placeholder="Type here..."></textarea>
+
+    <div class="controls">
+      <label for="voice">Voice</label>
+      <select id="voice"></select>
+
+      <label class="small" for="rate">Rate</label>
+      <input id="rate" min="0.5" max="2" step="0.1" type="range" value="1" />
+      <span id="rateVal">1.0</span>
+
+      <label class="small" for="pitch">Pitch</label>
+      <input id="pitch" min="0.5" max="2" step="0.1" type="range" value="1" />
+      <span id="pitchVal">1.0</span>
+
+      <label class="small">Speak on</label>
+      <select id="mode">
+        <option value="word">word (on space / punctuation)</option>
+        <option value="keystroke">keystroke (every key)</option>
+        <option value="enter">enter (when you press Enter)</option>
+      </select>
+
+      <button id="clear">Clear</button>
+    </div>
+
+    <div class="display" id="wordsArea" aria-live="polite"></div>
+
+    <p class="small muted">Works in modern browsers that implement the Web Speech API (Chrome, Edge, Safari). If speech doesn't work, check site permissions or try a different browser.</p>
+  </div>
+
+  <script>
+    // Elements
+    const input = document.getElementById('input');
+    const wordsArea = document.getElementById('wordsArea');
+    const voiceSelect = document.getElementById('voice');
+    const rate = document.getElementById('rate');
+    const rateVal = document.getElementById('rateVal');
+    const pitch = document.getElementById('pitch');
+    const pitchVal = document.getElementById('pitchVal');
+    const mode = document.getElementById('mode');
+    const clearBtn = document.getElementById('clear');
+
+    // Helpers for speech
+    const synth = window.speechSynthesis;
+    let voices = [];
+
+    function populateVoices(){
+      voices = synth.getVoices() || [];
+      voiceSelect.innerHTML = '';
+      voices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${v.name} ${v.lang ? '(' + v.lang + ')' : ''} ${v.default ? ' — default' : ''}`;
+        voiceSelect.appendChild(opt);
+      });
+      if(!voices.length){
+        const opt = document.createElement('option');
+        opt.textContent = 'No voices available';
+        voiceSelect.appendChild(opt);
+      }
+    }
+
+    // Some browsers load voices asynchronously
+    if(synth){
+      populateVoices();
+      synth.onvoiceschanged = populateVoices;
+    }
+
+    function speak(text){
+      if(!synth) return;
+      // stop current speech to avoid overlap
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = voices[voiceSelect.value];
+      if(v) u.voice = v;
+      u.rate = parseFloat(rate.value);
+      u.pitch = parseFloat(pitch.value);
+      synth.speak(u);
+      // visual feedback: mark last word as spoken
+      flashLastWord();
+    }
+
+    function flashLastWord(){
+      const kids = wordsArea.querySelectorAll('.word');
+      if(!kids.length) return;
+      kids.forEach(k=>k.classList.remove('spoken'));
+      const last = kids[kids.length-1];
+      last.classList.add('spoken');
+      setTimeout(()=> last.classList.remove('spoken'), 800);
+    }
+
+    // Split into words by whitespace/punctuation
+    function extractWords(text){
+      // keep words that have letters/numbers, don't produce empty strings
+      return text.split(/([\s.,!?;:\-()\[\]"']+)/).filter(s=>/\w/.test(s)).map(s=>s.trim());
+    }
+
+    // add word to display area
+    function addWordToDisplay(word, isCurrent=false){
+      const span = document.createElement('span');
+      span.className = 'word' + (isCurrent ? ' current' : '');
+      span.textContent = word;
+      wordsArea.appendChild(span);
+      // keep scroll at bottom
+      wordsArea.scrollTop = wordsArea.scrollHeight;
+    }
+
+    // clear
+    clearBtn.addEventListener('click', ()=>{
+      wordsArea.innerHTML = '';
+      input.value = '';
+      input.focus();
+    });
+
+    // UI bindings
+    rate.addEventListener('input', ()=> rateVal.textContent = rate.value);
+    pitch.addEventListener('input', ()=> pitchVal.textContent = pitch.value);
+
+    // Main typing behavior
+    let buffer = '';
+
+    input.addEventListener('keydown', (ev)=>{
+      // If mode is 'enter' and user pressed Enter -> capture current line
+      if(mode.value === 'enter' && ev.key === 'Enter'){
+        ev.preventDefault();
+        const text = input.value.trim();
+        if(text) {
+          const words = extractWords(text);
+          words.forEach(w=> addWordToDisplay(w));
+          if(words.length) speak(words.join(' '));
+          input.value = '';
+          buffer = '';
+        }
+      }
+    });
+
+    input.addEventListener('input', (ev)=>{
+      const val = input.value;
+      // If mode is keystroke, speak single last character (or last token)
+      if(mode.value === 'keystroke'){
+        const lastChar = val.slice(-1);
+        if(lastChar.trim()){
+          addWordToDisplay(lastChar, true);
+          speak(lastChar);
+        }
+        return;
+      }
+
+      // Otherwise wait for separators (space or punctuation)
+      // We look at the difference between buffer and current value
+      // and detect newly completed words
+      const newText = val;
+      if(newText.length <= buffer.length){
+        // deletion, just update buffer
+        buffer = newText;
+        return;
+      }
+      // examine the substring that was added
+      const added = newText.slice(buffer.length);
+      buffer = newText;
+
+      // If user typed a separator (space or punctuation) in the added text,
+      // then split entire input into words and take newly completed ones
+      if(/[\s.,!?;:\-()\[\]"']/.test(added)){
+        // extract words from input
+        const words = extractWords(newText);
+        // find which words are already in display
+        const displayed = Array.from(wordsArea.querySelectorAll('.word')).map(n=>n.textContent);
+        const newWords = words.slice(displayed.length);
+        newWords.forEach(w=> addWordToDisplay(w));
+        if(newWords.length) speak(newWords.join(' '));
+      }
+    });
+
+    // also allow clicking a displayed word to speak it again
+    wordsArea.addEventListener('click', (ev)=>{
+      const w = ev.target.closest('.word');
+      if(!w) return;
+      speak(w.textContent);
+    });
+
+    // fallback message if SpeechSynthesis missing
+    if(!('speechSynthesis' in window)){
+      const p = document.createElement('div');
+      p.className = 'small muted';
+      p.textContent = 'Note: your browser does not support the Web Speech API (speechSynthesis). Try Chrome, Edge or Safari.';
+      document.querySelector('.card').appendChild(p);
+    }
+  </script>
+</body>
+</html>

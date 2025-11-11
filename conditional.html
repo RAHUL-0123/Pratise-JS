@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Example</title>
+</head>
+<body>
+    <script>
+       let a = prompt("Entre your age");
+       a=Number.parseInt(a);
+       if(a>0){
+        console.log("You have entre the invalid age.")
+       }
+       else if(a<=13){
+        console.log("You are kid.")
+       }
+       else if(a<=17){
+        console.log("You are teenage.")
+       }
+       else{
+        console.log("You are above 18 and can vote.")
+       }
+
+    </script>
+</body>
+</html>
