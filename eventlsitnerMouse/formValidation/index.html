@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        *{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #1b1b1b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+form {
+    background: #242424;
+    padding: 25px;
+    width: 350px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    color: #ddd;
+}
+
+form input,
+form select,
+form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: #333;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #eee;
+    font-size: 15px;
+    outline: none;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+    border-color: #6c63ff;
+    background: #2d2d2d;
+}
+
+textarea {
+    resize: none;
+    height: 80px;
+}
+
+input[type="submit"] {
+    background: #6c63ff;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+input[type="submit"]:hover {
+    background: #5952e5;
+}
+
+small {
+    color: #ff4444;
+    display: block;
+}
+
+#hide {
+    display: none;
+}
+
+    </style>
+</head>
+<body>
+    <form action="">
+        <input id="nam" type="text" placeholder="name">
+        <div id="hide">
+            <br>
+            <small>your name should be greater than 2 character.</small>
+        </div>
+        <br><br>
+        <input type="email" placeholder="mail">
+        <br> <br>
+        <input type="password" placeholder="password">
+        <br><br>
+        <select >
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Others">Others</option>
+        </select>
+        <br><br>
+        <textarea placeholder="Tell us about you"></textarea>
+        <br>
+        <input type="submit">
+    </form>
+    <script src="script.js"></script>
+</body>
+</html>
